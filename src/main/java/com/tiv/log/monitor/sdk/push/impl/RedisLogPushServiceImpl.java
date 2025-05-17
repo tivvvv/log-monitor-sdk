@@ -5,6 +5,7 @@ import com.tiv.log.monitor.sdk.model.LogMessage;
 import com.tiv.log.monitor.sdk.push.LogPushService;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.Redisson;
+import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.redisson.codec.JsonJacksonCodec;
 import org.redisson.config.Config;
@@ -17,8 +18,10 @@ public class RedisLogPushServiceImpl implements LogPushService {
 
     private RedissonClient redissonClient;
 
+    private static final String LOG_MONITOR_SDK_TOPIC = "log-monitor-sdk-topic";
+
     @Override
-    public void init(String host, int port) {
+    public synchronized void init(String host, int port) {
         if (redissonClient != null && !redissonClient.isShutdown()) {
             return;
         }
@@ -41,7 +44,12 @@ public class RedisLogPushServiceImpl implements LogPushService {
 
     @Override
     public void push(LogMessage logMessage) {
-
+        try {
+            RTopic topic = redissonClient.getTopic(LOG_MONITOR_SDK_TOPIC);
+            topic.publish(logMessage);
+        } catch (Exception e) {
+            log.error("推送日志消息失败", e);
+        }
     }
 
 }
